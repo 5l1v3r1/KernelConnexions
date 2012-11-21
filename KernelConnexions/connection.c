@@ -14,9 +14,8 @@ static KCConnection ** connections = NULL;
 static size_t connectionsCount = 0;
 static size_t connectionsAlloc = 0;
 
-static void kc_connection_lock(KCConnection * conn);
+static boolean_t kc_connection_lock(KCConnection * conn, boolean_t verify);
 static void kc_connection_unlock(KCConnection * conn);
-static boolean_t kc_connection_exists(KCConnection * conn);
 
 static void kc_upcall(socket_t so, void * cookie, int waitf);
 
@@ -51,6 +50,7 @@ KCConnection * kc_connection_create(KCConnectionCallbacks callbacks, void * user
     newConnection->closed_cb = callbacks.closed;
     newConnection->opened_cb = callbacks.opened;
     newConnection->failed_cb = callbacks.failed;
+    newConnection->userData = userData;
     
     lck_mtx_lock(listMutex);
     if (connectionsCount == connectionsAlloc) {
@@ -92,9 +92,10 @@ void kc_connection_destroy(KCConnection * connection) {
     }
     if (!hasFound) return; // it has already been removed
     connectionsCount -= 1;
+    lck_mtx_unlock(listMutex);
     
     OSMallocTag tag = general_malloc_tag();
-    kc_connection_lock(connection);
+    kc_connection_lock(connection, FALSE);
     if (connection->socket) {
         sock_close(connection->socket);
         connection->socket = NULL;
@@ -103,16 +104,12 @@ void kc_connection_destroy(KCConnection * connection) {
     lck_mtx_free(mtx, mutexGroup);
     OSFree(connection, sizeof(KCConnection), tag);
     // TODO: figure out if I need to unlock before free
-    
-    lck_mtx_unlock(listMutex);
 }
 
 __private_extern__
 errno_t kc_connection_connect(KCConnection * connection, const void * host, uint16_t port, boolean_t isIpv6) {
-    if (!kc_connection_exists(connection)) return ENOENT;
-    kc_connection_lock(connection);
     errno_t error;
-    
+    if (!kc_connection_lock(connection, TRUE)) return ENOENT;
     if (isIpv6) {
         struct sockaddr_in6 addr;
         bzero(&addr, sizeof(addr));
@@ -168,8 +165,7 @@ errno_t kc_connection_connect(KCConnection * connection, const void * host, uint
 
 __private_extern__
 errno_t kc_connection_write(KCConnection * connection, const void * buffer, size_t length) {
-    if (!kc_connection_exists(connection)) return ENOENT;
-    kc_connection_lock(connection);
+    if (!kc_connection_lock(connection, TRUE)) return ENOENT;
     
     mbuf_t bodyPacket;
     
@@ -200,8 +196,24 @@ errno_t kc_connection_write(KCConnection * connection, const void * buffer, size
 
 #pragma mark - Private -
 
-static void kc_connection_lock(KCConnection * conn) {
+static boolean_t kc_connection_lock(KCConnection * conn, boolean_t verify) {
+    if (verify) {
+        lck_mtx_lock(listMutex);
+        boolean_t hasFound = FALSE;
+        for (size_t i = 0; i < connectionsCount; i++) {
+            if (connections[i] == conn) {
+                hasFound = TRUE;
+                break;
+            }
+        }
+        if (!hasFound) {
+            lck_mtx_unlock(listMutex);
+            return FALSE;
+        }
+    }
     lck_mtx_lock(conn->lock);
+    if (verify) lck_mtx_unlock(listMutex);
+    return TRUE;
 }
 
 static void kc_connection_unlock(KCConnection * conn) {
@@ -210,8 +222,8 @@ static void kc_connection_unlock(KCConnection * conn) {
 
 static void kc_upcall(socket_t so, void * cookie, int waitf) {
     KCConnection * connection = (KCConnection *)cookie;
-    if (!kc_connection_exists(connection)) return;
-    kc_connection_lock(connection);
+    // TODO: locking here may cause the thread to block; use dispatch thread for this
+    if (!kc_connection_lock(connection, TRUE)) return;
     if (!connection->isConnected) {
         if (sock_isconnected(so)) {
             connection->isConnected = TRUE;
@@ -228,6 +240,7 @@ static void kc_upcall(socket_t so, void * cookie, int waitf) {
             connection->socket = NULL;
             ((kc_connection_closed)connection->closed_cb)(connection);
         } else {
+            // TODO: make the socket non-blocking here
             mbuf_t buffer;
             size_t recvLen = 0xFFFFFFFF; // I just hope this will always be enough; maybe in 2032 it won't be
             errno_t error = sock_receivembuf(so, NULL, &buffer, 0, &recvLen);
@@ -255,18 +268,4 @@ static void kc_upcall(socket_t so, void * cookie, int waitf) {
         }
     }
     kc_connection_unlock(connection);
-}
-
-static boolean_t kc_connection_exists(KCConnection * conn) {
-    lck_mtx_lock(listMutex);
-    // remove the connection from the list
-    boolean_t hasFound = FALSE;
-    for (size_t i = 0; i < connectionsCount; i++) {
-        if (connections[i] == conn) {
-            hasFound = TRUE;
-            break;
-        }
-    }
-    lck_mtx_unlock(listMutex);
-    return hasFound;
 }

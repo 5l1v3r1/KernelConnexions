@@ -21,6 +21,7 @@ typedef struct {
     KCConnection * connection;
     char * currentPacketData;
     uint32_t currentPacketSize;
+    lck_mtx_t * mutex;
 } KCControl;
 
 typedef struct {
@@ -34,7 +35,7 @@ kern_ctl_ref control_get();
 kern_return_t control_unregister();
 
 KCControl * kc_control_create();
-errno_t kc_control_release(KCControl * control);
+errno_t kc_control_destroy(KCControl * control);
 
 errno_t kc_control_append_data(KCControl * control, mbuf_t buffer);
 errno_t kc_control_read_packet(KCControl * control, KCControlPacket ** packet);

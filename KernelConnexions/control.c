@@ -96,7 +96,7 @@ KCControl * kc_control_create() {
 }
 
 __private_extern__
-errno_t kc_control_release(KCControl * control) {
+errno_t kc_control_destroy(KCControl * control) {
     lck_mtx_lock(listMutex);
     // remove the connection from the list
     boolean_t hasFound = FALSE;

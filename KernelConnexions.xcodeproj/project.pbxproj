@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FAD99D4E165D80940050FACE /* dispatch.c in Sources */ = {isa = PBXBuildFile; fileRef = FAD99D4D165D80940050FACE /* dispatch.c */; };
 		FAF7B307165C2D4A00C92BFF /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FAF7B305165C2D4A00C92BFF /* InfoPlist.strings */; };
 		FAF7B309165C2D4A00C92BFF /* KernelConnexions.c in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B308165C2D4A00C92BFF /* KernelConnexions.c */; };
 		FAF7B321165C35BB00C92BFF /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FAF7B320165C35BB00C92BFF /* Foundation.framework */; };
@@ -32,6 +33,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		FAD99D4D165D80940050FACE /* dispatch.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dispatch.c; sourceTree = "<group>"; };
+		FAD99D50165D809C0050FACE /* dispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dispatch.h; sourceTree = "<group>"; };
 		FAF7B2FD165C2D4A00C92BFF /* KernelConnexions.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KernelConnexions.kext; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAF7B301165C2D4A00C92BFF /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = System/Library/Frameworks/Kernel.framework; sourceTree = SDKROOT; };
 		FAF7B304165C2D4A00C92BFF /* KernelConnexions-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "KernelConnexions-Info.plist"; sourceTree = "<group>"; };
@@ -122,6 +125,8 @@
 				FAF7B338165C3F2300C92BFF /* debug.c */,
 				FAF7B33A165C429000C92BFF /* connection.h */,
 				FAF7B33B165C429800C92BFF /* connection.c */,
+				FAD99D50165D809C0050FACE /* dispatch.h */,
+				FAD99D4D165D80940050FACE /* dispatch.c */,
 				FAF7B303165C2D4A00C92BFF /* Supporting Files */,
 			);
 			path = KernelConnexions;
@@ -262,6 +267,7 @@
 				FAF7B336165C3E3600C92BFF /* general.c in Sources */,
 				FAF7B339165C3F2300C92BFF /* debug.c in Sources */,
 				FAF7B33C165C429800C92BFF /* connection.c in Sources */,
+				FAD99D4E165D80940050FACE /* dispatch.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -432,6 +438,7 @@
 				FAF7B32A165C35BB00C92BFF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
