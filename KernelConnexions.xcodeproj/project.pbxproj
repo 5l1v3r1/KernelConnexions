@@ -9,7 +9,27 @@
 /* Begin PBXBuildFile section */
 		FAF7B307165C2D4A00C92BFF /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FAF7B305165C2D4A00C92BFF /* InfoPlist.strings */; };
 		FAF7B309165C2D4A00C92BFF /* KernelConnexions.c in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B308165C2D4A00C92BFF /* KernelConnexions.c */; };
+		FAF7B321165C35BB00C92BFF /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FAF7B320165C35BB00C92BFF /* Foundation.framework */; };
+		FAF7B324165C35BB00C92BFF /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B323165C35BB00C92BFF /* main.m */; };
+		FAF7B328165C35BB00C92BFF /* ClientConnexions.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = FAF7B327165C35BB00C92BFF /* ClientConnexions.1 */; };
+		FAF7B332165C3CEF00C92BFF /* control.c in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B331165C3CEF00C92BFF /* control.c */; };
+		FAF7B336165C3E3600C92BFF /* general.c in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B335165C3E3600C92BFF /* general.c */; };
+		FAF7B339165C3F2300C92BFF /* debug.c in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B338165C3F2300C92BFF /* debug.c */; };
+		FAF7B33C165C429800C92BFF /* connection.c in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B33B165C429800C92BFF /* connection.c */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FAF7B31C165C35BB00C92BFF /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+				FAF7B328165C35BB00C92BFF /* ClientConnexions.1 in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		FAF7B2FD165C2D4A00C92BFF /* KernelConnexions.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KernelConnexions.kext; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -18,6 +38,20 @@
 		FAF7B306165C2D4A00C92BFF /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		FAF7B308165C2D4A00C92BFF /* KernelConnexions.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = KernelConnexions.c; sourceTree = "<group>"; };
 		FAF7B30A165C2D4A00C92BFF /* KernelConnexions-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "KernelConnexions-Prefix.pch"; sourceTree = "<group>"; };
+		FAF7B31E165C35BB00C92BFF /* ClientConnexions */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ClientConnexions; sourceTree = BUILT_PRODUCTS_DIR; };
+		FAF7B320165C35BB00C92BFF /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		FAF7B323165C35BB00C92BFF /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		FAF7B326165C35BB00C92BFF /* ClientConnexions-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ClientConnexions-Prefix.pch"; sourceTree = "<group>"; };
+		FAF7B327165C35BB00C92BFF /* ClientConnexions.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = ClientConnexions.1; sourceTree = "<group>"; };
+		FAF7B330165C3CE800C92BFF /* control.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = control.h; sourceTree = "<group>"; };
+		FAF7B331165C3CEF00C92BFF /* control.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = control.c; sourceTree = "<group>"; };
+		FAF7B333165C3D4D00C92BFF /* const.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = const.h; sourceTree = "<group>"; };
+		FAF7B334165C3DF700C92BFF /* general.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = general.h; sourceTree = "<group>"; };
+		FAF7B335165C3E3600C92BFF /* general.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = general.c; sourceTree = "<group>"; };
+		FAF7B337165C3F1F00C92BFF /* debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
+		FAF7B338165C3F2300C92BFF /* debug.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = debug.c; sourceTree = "<group>"; };
+		FAF7B33A165C429000C92BFF /* connection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = connection.h; sourceTree = "<group>"; };
+		FAF7B33B165C429800C92BFF /* connection.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = connection.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -28,6 +62,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FAF7B31B165C35BB00C92BFF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FAF7B321165C35BB00C92BFF /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -35,6 +77,7 @@
 			isa = PBXGroup;
 			children = (
 				FAF7B302165C2D4A00C92BFF /* KernelConnexions */,
+				FAF7B322165C35BB00C92BFF /* ClientConnexions */,
 				FAF7B2FF165C2D4A00C92BFF /* Frameworks */,
 				FAF7B2FE165C2D4A00C92BFF /* Products */,
 			);
@@ -44,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				FAF7B2FD165C2D4A00C92BFF /* KernelConnexions.kext */,
+				FAF7B31E165C35BB00C92BFF /* ClientConnexions */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -51,6 +95,7 @@
 		FAF7B2FF165C2D4A00C92BFF /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				FAF7B320165C35BB00C92BFF /* Foundation.framework */,
 				FAF7B300165C2D4A00C92BFF /* Other Frameworks */,
 			);
 			name = Frameworks;
@@ -68,6 +113,15 @@
 			isa = PBXGroup;
 			children = (
 				FAF7B308165C2D4A00C92BFF /* KernelConnexions.c */,
+				FAF7B333165C3D4D00C92BFF /* const.h */,
+				FAF7B330165C3CE800C92BFF /* control.h */,
+				FAF7B331165C3CEF00C92BFF /* control.c */,
+				FAF7B334165C3DF700C92BFF /* general.h */,
+				FAF7B335165C3E3600C92BFF /* general.c */,
+				FAF7B337165C3F1F00C92BFF /* debug.h */,
+				FAF7B338165C3F2300C92BFF /* debug.c */,
+				FAF7B33A165C429000C92BFF /* connection.h */,
+				FAF7B33B165C429800C92BFF /* connection.c */,
 				FAF7B303165C2D4A00C92BFF /* Supporting Files */,
 			);
 			path = KernelConnexions;
@@ -79,6 +133,24 @@
 				FAF7B304165C2D4A00C92BFF /* KernelConnexions-Info.plist */,
 				FAF7B305165C2D4A00C92BFF /* InfoPlist.strings */,
 				FAF7B30A165C2D4A00C92BFF /* KernelConnexions-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		FAF7B322165C35BB00C92BFF /* ClientConnexions */ = {
+			isa = PBXGroup;
+			children = (
+				FAF7B323165C35BB00C92BFF /* main.m */,
+				FAF7B327165C35BB00C92BFF /* ClientConnexions.1 */,
+				FAF7B325165C35BB00C92BFF /* Supporting Files */,
+			);
+			path = ClientConnexions;
+			sourceTree = "<group>";
+		};
+		FAF7B325165C35BB00C92BFF /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				FAF7B326165C35BB00C92BFF /* ClientConnexions-Prefix.pch */,
 			);
 			name = "Supporting Files";
 			sourceTree = "<group>";
@@ -115,6 +187,23 @@
 			productReference = FAF7B2FD165C2D4A00C92BFF /* KernelConnexions.kext */;
 			productType = "com.apple.product-type.kernel-extension";
 		};
+		FAF7B31D165C35BB00C92BFF /* ClientConnexions */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FAF7B32B165C35BB00C92BFF /* Build configuration list for PBXNativeTarget "ClientConnexions" */;
+			buildPhases = (
+				FAF7B31A165C35BB00C92BFF /* Sources */,
+				FAF7B31B165C35BB00C92BFF /* Frameworks */,
+				FAF7B31C165C35BB00C92BFF /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ClientConnexions;
+			productName = ClientConnexions;
+			productReference = FAF7B31E165C35BB00C92BFF /* ClientConnexions */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -137,6 +226,7 @@
 			projectRoot = "";
 			targets = (
 				FAF7B2FC165C2D4A00C92BFF /* KernelConnexions */,
+				FAF7B31D165C35BB00C92BFF /* ClientConnexions */,
 			);
 		};
 /* End PBXProject section */
@@ -168,6 +258,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				FAF7B309165C2D4A00C92BFF /* KernelConnexions.c in Sources */,
+				FAF7B332165C3CEF00C92BFF /* control.c in Sources */,
+				FAF7B336165C3E3600C92BFF /* general.c in Sources */,
+				FAF7B339165C3F2300C92BFF /* debug.c in Sources */,
+				FAF7B33C165C429800C92BFF /* connection.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FAF7B31A165C35BB00C92BFF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FAF7B324165C35BB00C92BFF /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,7 +310,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 			};
@@ -231,7 +333,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -239,10 +341,13 @@
 		FAF7B30E165C2D4A00C92BFF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "KernelConnexions/KernelConnexions-Prefix.pch";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_UNINITIALIZED_AUTOS = NO;
 				INFOPLIST_FILE = "KernelConnexions/KernelConnexions-Info.plist";
 				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
 				MODULE_NAME = com.aqnichol.KernelConnexions;
@@ -250,6 +355,7 @@
 				MODULE_STOP = KernelConnexions_stop;
 				MODULE_VERSION = 1.0.0d1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.7;
 				WRAPPER_EXTENSION = kext;
 			};
 			name = Debug;
@@ -257,10 +363,13 @@
 		FAF7B30F165C2D4A00C92BFF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "KernelConnexions/KernelConnexions-Prefix.pch";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_WARN_UNINITIALIZED_AUTOS = NO;
 				INFOPLIST_FILE = "KernelConnexions/KernelConnexions-Info.plist";
 				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
 				MODULE_NAME = com.aqnichol.KernelConnexions;
@@ -268,7 +377,30 @@
 				MODULE_STOP = KernelConnexions_stop;
 				MODULE_VERSION = 1.0.0d1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.7;
 				WRAPPER_EXTENSION = kext;
+			};
+			name = Release;
+		};
+		FAF7B329165C35BB00C92BFF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "ClientConnexions/ClientConnexions-Prefix.pch";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.7;
+			};
+			name = Debug;
+		};
+		FAF7B32A165C35BB00C92BFF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "ClientConnexions/ClientConnexions-Prefix.pch";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.7;
 			};
 			name = Release;
 		};
@@ -289,6 +421,15 @@
 			buildConfigurations = (
 				FAF7B30E165C2D4A00C92BFF /* Debug */,
 				FAF7B30F165C2D4A00C92BFF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FAF7B32B165C35BB00C92BFF /* Build configuration list for PBXNativeTarget "ClientConnexions" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FAF7B329165C35BB00C92BFF /* Debug */,
+				FAF7B32A165C35BB00C92BFF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 		};
