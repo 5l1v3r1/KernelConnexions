@@ -16,6 +16,7 @@
 #include "general.h"
 #include "connection.h"
 #include "control.h"
+#include "dispatch.h"
 
 kern_return_t KernelConnexions_start(kmod_info_t * ki, void * d);
 kern_return_t KernelConnexions_stop(kmod_info_t * ki, void * d);
@@ -23,10 +24,26 @@ kern_return_t KernelConnexions_stop(kmod_info_t * ki, void * d);
 kern_return_t KernelConnexions_start(kmod_info_t * ki, void * d) {
     general_initialize();
     errno_t error;
+    
+    error = dispatch_initialize();
+    if (error != KERN_SUCCESS) {
+        general_finalize();
+    }
+    
     error = connection_initialize();
-    if (error != KERN_SUCCESS) return error;
+    if (error != KERN_SUCCESS) {
+        dispatch_finalize();
+        general_finalize();
+    }
+    
     error = control_register();
-    if (error != KERN_SUCCESS) return error;
+    if (error != KERN_SUCCESS) {
+        connection_finalize();
+        dispatch_finalize();
+        general_finalize();
+        return error;
+    }
+    
     return KERN_SUCCESS;
 }
 

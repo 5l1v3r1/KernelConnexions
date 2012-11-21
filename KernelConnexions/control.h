@@ -21,7 +21,7 @@ typedef struct {
     KCConnection * connection;
     char * currentPacketData;
     uint32_t currentPacketSize;
-    lck_mtx_t * mutex;
+    lck_mtx_t * lock;
 } KCControl;
 
 typedef struct {

@@ -11,6 +11,7 @@
 
 #include "general.h"
 #include "debug.h"
+#include "dispatch.h"
 #include <sys/kpi_socket.h>
 #include <netinet/in.h>
 #include <sys/mbuf.h>
@@ -25,12 +26,13 @@ typedef struct {
     void * failed_cb;
     void * newdata_cb;
     boolean_t isConnected;
+    uint32_t identifier;
 } KCConnection;
 
-typedef void (*kc_connection_opened)(KCConnection * connection);
-typedef void (*kc_connection_closed)(KCConnection * connection);
-typedef void (*kc_connection_failed)(KCConnection * connection, errno_t error);
-typedef void (*kc_connection_newdata)(KCConnection * connection, const char * buffer, size_t length);
+typedef void (*kc_connection_opened)(uint32_t identifier);
+typedef void (*kc_connection_closed)(uint32_t identifier);
+typedef void (*kc_connection_failed)(uint32_t identifier, errno_t error);
+typedef void (*kc_connection_newdata)(uint32_t identifier, const char * buffer, size_t length);
 
 typedef struct {
     kc_connection_opened opened;
@@ -42,9 +44,9 @@ typedef struct {
 kern_return_t connection_initialize();
 void connection_finalize();
 
-KCConnection * kc_connection_create(KCConnectionCallbacks callbacks, void * userData);
-void kc_connection_destroy(KCConnection * connection);
-errno_t kc_connection_connect(KCConnection * connection, const void * host, uint16_t port, boolean_t isIpv6);
-errno_t kc_connection_write(KCConnection * connection, const void * buffer, size_t length);
+uint32_t kc_connection_create(KCConnectionCallbacks callbacks, void * userData);
+void kc_connection_destroy(uint32_t connection);
+errno_t kc_connection_connect(uint32_t connection, const void * host, uint16_t port, boolean_t isIpv6);
+errno_t kc_connection_write(uint32_t connection, const void * buffer, size_t length);
 
 #endif

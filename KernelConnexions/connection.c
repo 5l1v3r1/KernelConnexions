@@ -13,11 +13,14 @@ static lck_mtx_t * listMutex = NULL;
 static KCConnection ** connections = NULL;
 static size_t connectionsCount = 0;
 static size_t connectionsAlloc = 0;
+static uint32_t identifierIncrement = 1;
 
-static boolean_t kc_connection_lock(KCConnection * conn, boolean_t verify);
+static KCConnection * kc_connection_lock(uint32_t identifier);
 static void kc_connection_unlock(KCConnection * conn);
 
 static void kc_upcall(socket_t so, void * cookie, int waitf);
+static void kc_upcall_dispatched(void * cookie);
+static void kc_upcall_check_data_return(KCConnection * connection);
 
 __private_extern__
 kern_return_t connection_initialize() {
@@ -39,7 +42,7 @@ void connection_finalize() {
 }
 
 __private_extern__
-KCConnection * kc_connection_create(KCConnectionCallbacks callbacks, void * userData) {
+uint32_t kc_connection_create(KCConnectionCallbacks callbacks, void * userData) {
     OSMallocTag tag = general_malloc_tag();
     KCConnection * newConnection = OSMalloc(sizeof(KCConnection), tag);
     if (!newConnection) return NULL;
@@ -53,11 +56,13 @@ KCConnection * kc_connection_create(KCConnectionCallbacks callbacks, void * user
     newConnection->userData = userData;
     
     lck_mtx_lock(listMutex);
+    newConnection->identifier = identifierIncrement++; // this is within the lock for a reason
     if (connectionsCount == connectionsAlloc) {
         uint32_t oldSize = (uint32_t)connectionsAlloc * (uint32_t)sizeof(KCConnection *);
         connectionsAlloc += 2;
         KCConnection ** newBuffer = (KCConnection **)OSMalloc((uint32_t)sizeof(KCConnection *) * (uint32_t)connectionsAlloc, tag);
         if (!newBuffer) {
+            lck_mtx_free(newConnection->lock, mutexGroup);
             OSFree(newConnection, sizeof(KCConnection), tag);
             return NULL;
         }
@@ -70,31 +75,30 @@ KCConnection * kc_connection_create(KCConnectionCallbacks callbacks, void * user
     connections[connectionsCount++] = newConnection;
     lck_mtx_unlock(listMutex);
     
-    return newConnection;
+    return newConnection->identifier;
 }
 
 __private_extern__
-void kc_connection_destroy(KCConnection * connection) {
-    // lock the list mutex around this entire operation so that
-    // nobody else's call gets through while we're here.
+void kc_connection_destroy(uint32_t identifier) {
+    KCConnection * connection = NULL;
     
     lck_mtx_lock(listMutex);
     // remove the connection from the list
-    boolean_t hasFound = FALSE;
     for (size_t i = 0; i < connectionsCount; i++) {
-        if (hasFound) {
+        if (connection) {
             connections[i - 1] = connections[i];
         } else {
-            if (connections[i] == connection) {
-                hasFound = TRUE;
+            if (connections[i]->identifier == identifier) {
+                connection = connections[i];
             }
         }
     }
-    if (!hasFound) return; // it has already been removed
+    if (!connection) return; // it has already been removed
     connectionsCount -= 1;
     lck_mtx_unlock(listMutex);
     
     OSMallocTag tag = general_malloc_tag();
+    lck_mtx_lock(connection->lock);
     kc_connection_lock(connection, FALSE);
     if (connection->socket) {
         sock_close(connection->socket);
@@ -107,9 +111,10 @@ void kc_connection_destroy(KCConnection * connection) {
 }
 
 __private_extern__
-errno_t kc_connection_connect(KCConnection * connection, const void * host, uint16_t port, boolean_t isIpv6) {
+errno_t kc_connection_connect(uint32_t identifier, const void * host, uint16_t port, boolean_t isIpv6) {
     errno_t error;
-    if (!kc_connection_lock(connection, TRUE)) return ENOENT;
+    KCConnection * connection;
+    if (!(connection = kc_connection_lock(identifier))) return ENOENT;
     if (isIpv6) {
         struct sockaddr_in6 addr;
         bzero(&addr, sizeof(addr));
@@ -132,7 +137,11 @@ errno_t kc_connection_connect(KCConnection * connection, const void * host, uint
         }
         if (!error) {
             // call callback immediately
-            ((kc_connection_opened)connection->opened_cb)(connection);
+            kc_connection_opened cb = (kc_connection_opened)connection->opened_cb;
+            kc_connection_unlock(connection);
+            cb(identifier);
+        } else {
+            kc_connection_unlock(connection);
         }
     } else {
         struct sockaddr_in addr;
@@ -156,19 +165,22 @@ errno_t kc_connection_connect(KCConnection * connection, const void * host, uint
         }
         if (!error) {
             // call callback immediately
-            ((kc_connection_opened)connection->opened_cb)(connection);
+            kc_connection_opened cb = (kc_connection_opened)connection->opened_cb;
+            kc_connection_unlock(connection);
+            cb(identifier);
+        } else {
+            kc_connection_unlock(connection);
         }
     }
-    kc_connection_unlock(connection);
     return error;
 }
 
 __private_extern__
-errno_t kc_connection_write(KCConnection * connection, const void * buffer, size_t length) {
-    if (!kc_connection_lock(connection, TRUE)) return ENOENT;
+errno_t kc_connection_write(uint32_t identifier, const void * buffer, size_t length) {
+    KCConnection * connection;
+    if (!(connection = kc_connection_lock(identifier))) return ENOENT;
     
     mbuf_t bodyPacket;
-    
     size_t offset = 0;
     
     while (offset < length) {
@@ -196,24 +208,23 @@ errno_t kc_connection_write(KCConnection * connection, const void * buffer, size
 
 #pragma mark - Private -
 
-static boolean_t kc_connection_lock(KCConnection * conn, boolean_t verify) {
-    if (verify) {
-        lck_mtx_lock(listMutex);
-        boolean_t hasFound = FALSE;
-        for (size_t i = 0; i < connectionsCount; i++) {
-            if (connections[i] == conn) {
-                hasFound = TRUE;
-                break;
-            }
-        }
-        if (!hasFound) {
-            lck_mtx_unlock(listMutex);
-            return FALSE;
+static KCConnection * kc_connection_lock(uint32_t identifier) {
+    KCConnection * conn = NULL;
+    lck_mtx_lock(listMutex);
+    boolean_t hasFound = FALSE;
+    for (size_t i = 0; i < connectionsCount; i++) {
+        if (connections[i]->identifier == identifier) {
+            hasFound = TRUE;
+            conn = connections[i];
+            break;
         }
     }
+    if (!hasFound) {
+        return NULL;
+    }
     lck_mtx_lock(conn->lock);
-    if (verify) lck_mtx_unlock(listMutex);
-    return TRUE;
+    lck_mtx_unlock(listMutex);
+    return conn;
 }
 
 static void kc_connection_unlock(KCConnection * conn) {
@@ -221,51 +232,73 @@ static void kc_connection_unlock(KCConnection * conn) {
 }
 
 static void kc_upcall(socket_t so, void * cookie, int waitf) {
-    KCConnection * connection = (KCConnection *)cookie;
-    // TODO: locking here may cause the thread to block; use dispatch thread for this
-    if (!kc_connection_lock(connection, TRUE)) return;
+    dispatch_push(kc_upcall_dispatched, cookie);
+}
+
+static void kc_upcall_dispatched(void * cookie) {
+    uint32_t identifier = (uint32_t)cookie;
+    KCConnection * connection;
+    if (!(connection = kc_connection_lock(identifier))) return;
+    socket_t so = connection->socket;
     if (!connection->isConnected) {
+        void * cb;
         if (sock_isconnected(so)) {
             connection->isConnected = TRUE;
-            ((kc_connection_opened)connection->opened_cb)(connection);
+            void * cb = connection->opened_cb;
+            kc_connection_unlock(connection);
+            ((kc_connection_opened)cb)(identifier);
         } else {
             sock_close(connection->socket);
             connection->socket = NULL;
-            ((kc_connection_failed)connection->failed_cb)(connection, 0);
+            cb = connection->failed_cb;
+            kc_connection_unlock(connection);
+            ((kc_connection_failed)cb)(identifier, 0);
         }
     } else {
-        if (!sock_isconnected(so)) {
-            sock_close(connection->socket);
-            connection->isConnected = FALSE;
-            connection->socket = NULL;
-            ((kc_connection_closed)connection->closed_cb)(connection);
-        } else {
-            // TODO: make the socket non-blocking here
-            mbuf_t buffer;
-            size_t recvLen = 0xFFFFFFFF; // I just hope this will always be enough; maybe in 2032 it won't be
-            errno_t error = sock_receivembuf(so, NULL, &buffer, 0, &recvLen);
-            if (error) {
-                debugf("sock_receivembuf: error %d", error);
-                connection->isConnected = FALSE;
-                sock_close(connection->socket);
-                connection->socket = NULL;
-                ((kc_connection_failed)connection->failed_cb)(connection, error);
-                kc_connection_unlock(connection);
-                return;
-            }
-            // TODO: shouldn't even need recvLen
-            uint32_t len = (uint32_t)mbuf_len(buffer);
-            char * rawData = OSMalloc(len, general_malloc_tag());
-            if (!rawData) {
-                debugf("fatal: failed to allocate received data!");
-                ((kc_connection_failed)connection->failed_cb)(connection, ENOMEM);
-                kc_connection_unlock(connection);
-                return;
-            }
-            mbuf_copydata(buffer, 0, len, rawData);
-            mbuf_free(buffer);
-            ((kc_connection_newdata)connection->newdata_cb)(connection, rawData, len);
-        }
+        kc_upcall_check_data_return(connection);
     }
-    kc_connection_unlock(connection);
+
+}
+
+static void kc_upcall_check_data_return(KCConnection * connection) {
+    void * cb = NULL;
+    socket_t so = connection->socket;
+    uint32_t identifier = connection->identifier;
+    if (!sock_isconnected(so)) {
+        sock_close(connection->socket);
+        connection->isConnected = FALSE;
+        connection->socket = NULL;
+        cb = connection->closed_cb;
+        kc_connection_unlock(connection);
+        ((kc_connection_closed)cb)(identifier);
+    } else {
+        mbuf_t buffer;
+        size_t recvLen = 0xFFFFFFFF; // I just hope this will always be enough; maybe in 2032 it won't be
+        errno_t error = sock_receivembuf(so, NULL, &buffer, 0, &recvLen);
+        if (error) {
+            debugf("sock_receivembuf: error %d", error);
+            connection->isConnected = FALSE;
+            sock_close(connection->socket);
+            connection->socket = NULL;
+            cb = connection->failed_cb;
+            kc_connection_unlock(connection);
+            ((kc_connection_failed)cb)(identifier, error);
+            return;
+        }
+        uint32_t len = (uint32_t)mbuf_len(buffer);
+        char * rawData = OSMalloc(len, general_malloc_tag());
+        if (!rawData) {
+            debugf("fatal: failed to allocate received data!");
+            cb = connection->failed_cb;
+            kc_connection_unlock(connection);
+            ((kc_connection_failed)cb)(identifier, ENOMEM);
+            return;
+        }
+        mbuf_copydata(buffer, 0, len, rawData);
+        mbuf_free(buffer);
+        cb = connection->newdata_cb;
+        kc_connection_unlock(connection);
+        ((kc_connection_newdata)cb)(identifier, rawData, len);
+        OSFree(rawData, len, general_malloc_tag());
+    }
 }

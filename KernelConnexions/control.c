@@ -14,6 +14,9 @@ static errno_t control_handle_getopt(kern_ctl_ref kctlref, u_int32_t unit, void 
 static errno_t control_handle_send(kern_ctl_ref kctlref, u_int32_t unit, void * unitinfo, mbuf_t m, int flags);
 static errno_t control_handle_setopt(kern_ctl_ref kctlref, u_int32_t unit, void * unitinfo, int opt, void * data, size_t len);
 
+static boolean_t kc_control_lock(KCControl * control, boolean_t verify);
+static void kc_control_unlock(KCConnection * control);
+
 static struct kern_ctl_reg ConnexionsControlRegistration = {
     kBundleID,
     0,
@@ -38,16 +41,31 @@ static uint32_t controlAlloc = 0;
 
 __private_extern__
 kern_return_t control_register() {
-    controlList = OSMalloc(sizeof(KCControl) * 2, general_malloc_tag());
+    controlList = OSMalloc(sizeof(KCControl *) * 2, general_malloc_tag());
     if (!controlList) return KERN_FAILURE;
     controlAlloc = 2;
+    
+    mutexGroup = lck_grp_alloc_init("control", LCK_GRP_ATTR_NULL);
+    if (!mutexGroup) {
+        OSFree(controlList, sizeof(KCControl *) * controlAlloc, general_malloc_tag());
+        return KERN_FAILURE;
+    }
+    
+    listMutex = lck_mtx_alloc_init(mutexGroup, LCK_ATTR_NULL);
+    if (!listMutex) {
+        lck_grp_free(mutexGroup);
+        OSFree(controlList, sizeof(KCControl *) * controlAlloc, general_malloc_tag());
+        return KERN_FAILURE;
+    }
     
     errno_t error = ctl_register(&ConnexionsControlRegistration, &clientControl);
     if (error != 0) {
         debugf("fatal: failed to register control: %lu", error);
+        lck_mtx_free(listMutex, mutexGroup);
+        lck_grp_free(mutexGroup);
+        OSFree(controlList, sizeof(KCControl *) * controlAlloc, general_malloc_tag());
+        return KERN_FAILURE;
     }
-    mutexGroup = lck_grp_alloc_init("control", LCK_GRP_ATTR_NULL);
-    listMutex = lck_mtx_alloc_init(mutexGroup, LCK_ATTR_NULL);
     
     return error;
 }
@@ -67,6 +85,11 @@ kern_return_t control_unregister() {
             clientControl = NULL;
         }
     }
+    
+    lck_mtx_free(listMutex, mutexGroup);
+    lck_grp_free(mutexGroup);
+    OSFree(controlList, sizeof(KCControl *) * controlAlloc, general_malloc_tag());
+    
     return KERN_SUCCESS;
 }
 
@@ -76,17 +99,20 @@ __private_extern__
 KCControl * kc_control_create() {
     KCControl * control = OSMalloc(sizeof(KCControl), general_malloc_tag());
     if (!control) return NULL;
+    control->lock = lck_mtx_alloc_init(mutexGroup, LCK_ATTR_NULL);
+    
     lck_mtx_lock(listMutex);
     if (controlCount == controlAlloc) {
         KCControl ** newList = (KCControl **)OSMalloc((uint32_t)sizeof(KCControl *) * (controlAlloc + 2), general_malloc_tag());
         if (!newList) {
+            lck_mtx_free(control->lock, mutexGroup);
             OSFree(control, sizeof(KCControl), general_malloc_tag());
             return NULL;
         }
         for (uint32_t i = 0; i < controlCount; i++) {
             newList[i] = controlList[i];
         }
-        OSFree(controlList, (uint32_t)sizeof(KCControl *) * (controlAlloc + 2), general_malloc_tag());
+        OSFree(controlList, (uint32_t)sizeof(KCControl *) * controlAlloc, general_malloc_tag());
         controlList = newList;
         controlAlloc += 2;
     }
