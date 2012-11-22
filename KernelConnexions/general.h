@@ -11,10 +11,14 @@
 
 #include <libkern/OSMalloc.h>
 #include <sys/param.h> // gives NULL
+#include <string.h>
 #include "const.h"
 
 void general_initialize();
 void general_finalize();
 OSMallocTag general_malloc_tag();
+
+void * number_to_pointer(uint32_t num);
+uint32_t pointer_to_number(void * pointer);
 
 #endif

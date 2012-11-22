@@ -48,5 +48,6 @@ uint32_t kc_connection_create(KCConnectionCallbacks callbacks, void * userData);
 void kc_connection_destroy(uint32_t connection);
 errno_t kc_connection_connect(uint32_t connection, const void * host, uint16_t port, boolean_t isIpv6);
 errno_t kc_connection_write(uint32_t connection, const void * buffer, size_t length);
+void * kc_connection_get_user_data(uint32_t connection);
 
 #endif

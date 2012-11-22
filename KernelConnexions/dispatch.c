@@ -29,18 +29,18 @@ kern_return_t dispatch_initialize() {
     
     queueGroup = lck_grp_alloc_init("queue", LCK_GRP_ATTR_NULL);
     if (!queueGroup) {
-        OSFree(dispatches, sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
+        OSFree(dispatches, (uint32_t)sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
         return KERN_FAILURE;
     }
     queueMutex = lck_mtx_alloc_init(queueGroup, LCK_ATTR_NULL);
     if (!queueMutex) {
-        OSFree(dispatches, sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
+        OSFree(dispatches, (uint32_t)sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
         lck_grp_free(queueGroup);
         return KERN_FAILURE;
     }
     
     if (kernel_thread_start(dispatch_queue_main, NULL, &backgroundThread) != KERN_SUCCESS) {
-        OSFree(dispatches, sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
+        OSFree(dispatches, (uint32_t)sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
         lck_mtx_free(queueMutex, queueGroup);
         lck_grp_free(queueGroup);
         return KERN_FAILURE;
@@ -64,7 +64,7 @@ void dispatch_finalize() {
         lck_mtx_unlock(queueMutex);
         IOSleep(10);
     }
-    OSFree(dispatches, sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
+    OSFree(dispatches, (uint32_t)sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
     lck_mtx_free(queueMutex, queueGroup);
     lck_grp_free(queueGroup);
     thread_deallocate(backgroundThread);
@@ -77,12 +77,12 @@ errno_t dispatch_push(void (*call)(void * data), void * data) {
     callback.data = data;
     lck_mtx_lock(queueMutex);
     if (dispatchesCount == dispatchesAlloc) {
-        KCDispatchCB * newDispatches = (KCDispatchCB *)OSMalloc(sizeof(KCDispatchCB) * (dispatchesAlloc + 2), general_malloc_tag());
+        KCDispatchCB * newDispatches = (KCDispatchCB *)OSMalloc((uint32_t)sizeof(KCDispatchCB) * (dispatchesAlloc + 2), general_malloc_tag());
         if (!newDispatches) return ENOMEM;
         for (uint32_t i = 0; i < dispatchesCount; i++) {
             newDispatches[i] = dispatches[i];
         }
-        OSFree(dispatches, sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
+        OSFree(dispatches, (uint32_t)sizeof(KCDispatchCB) * dispatchesAlloc, general_malloc_tag());
         dispatches = newDispatches;
         dispatchesAlloc += 2;
     }

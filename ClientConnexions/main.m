@@ -22,6 +22,8 @@ int main(int argc, const char * argv[]) {
             fprintf(stderr, "failed to open socket.\n");
             return 1;
         }
+        char data[] = {1, 0, 1, 'a'};
+        write(connection, data, 4);
         sleep(1);
         close(connection);
     }
