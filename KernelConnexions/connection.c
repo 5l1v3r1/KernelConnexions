@@ -150,12 +150,16 @@ errno_t kc_connection_connect(uint32_t identifier, const void * host, uint16_t p
         }
         if ((error = kc_socket_set_nonblocking(connection->socket))) {
             debugf("kc_socket_set_nonblocking(ipv6): error %d", error);
+            sock_close(connection->socket);
+            connection->socket = NULL;
             kc_connection_unlock(connection);
             return error;
         }
         error = sock_connect(connection->socket, (const struct sockaddr *)&addr, MSG_DONTWAIT);
         if (error != EINPROGRESS && error) {
             debugf("sock_connect(ipv6): error %d", error);
+            sock_close(connection->socket);
+            connection->socket = NULL;
             kc_connection_unlock(connection);
             return error;
         }
@@ -183,12 +187,16 @@ errno_t kc_connection_connect(uint32_t identifier, const void * host, uint16_t p
         }
         if ((error = kc_socket_set_nonblocking(connection->socket))) {
             debugf("kc_socket_set_nonblocking(ipv4): error %d", error);
+            sock_close(connection->socket);
+            connection->socket = NULL;
             kc_connection_unlock(connection);
             return error;
         }
         error = sock_connect(connection->socket, (const struct sockaddr *)&addr, MSG_DONTWAIT);
         if (error != EINPROGRESS && error) {
             debugf("sock_connect(ipv4): error %d", error);
+            sock_close(connection->socket);
+            connection->socket = NULL;
             kc_connection_unlock(connection);
             return error;
         }
