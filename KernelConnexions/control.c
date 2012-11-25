@@ -12,6 +12,8 @@ static KCControl * kc_control_lock(uint32_t identifier);
 static void kc_control_unlock(KCControl * control);
 static void kc_process_packet(void * unitInfo);
 static void kc_process_packet_connect(uint32_t identifier, KCControlPacket * packet);
+static void kc_process_packet_send(uint32_t identifier, KCControlPacket * packet);
+static void kc_process_packet_close(uint32_t identifier, KCControlPacket * packet);
 
 static errno_t control_handle_connect(kern_ctl_ref kctlref, struct sockaddr_ctl * sac, void ** unitinfo);
 static errno_t control_handle_disconnect(kern_ctl_ref kctlref, u_int32_t unit, void * unitinfo);
@@ -22,7 +24,7 @@ static errno_t control_handle_setopt(kern_ctl_ref kctlref, u_int32_t unit, void 
 static void kc_connection_opened_callback(uint32_t connection);
 static void kc_connection_closed_callback(uint32_t connection);
 static void kc_connection_failed_callback(uint32_t connection, errno_t error);
-static void kc_connection_newdata_callback(uint32_t connection, const char * buffer, size_t size);
+static void kc_connection_newdata_callback(uint32_t connection, char * buffer, size_t size);
 
 static struct kern_ctl_reg ConnexionsControlRegistration = {
     kBundleID,
@@ -111,20 +113,22 @@ kern_return_t control_unregister() {
 #pragma mark - Data Structures -
 
 __private_extern__
-uint32_t kc_control_create() {
+uint32_t kc_control_create(uint32_t unit) {
     KCControl * control = (KCControl *)OSMalloc(sizeof(KCControl), general_malloc_tag());
     if (!control) return 0;
     bzero(control, sizeof(KCControl));
+    control->unit = unit;
     control->lock = lck_mtx_alloc_init(mutexGroup, LCK_ATTR_NULL);
+    
+    lck_mtx_lock(listMutex);
+    control->identifier = controlIdentifier++;
     control->connection = kc_connection_create(ConnectionCallbacks, number_to_pointer(control->identifier));
     if (control->connection == 0) {
+        lck_mtx_unlock(listMutex);
         lck_mtx_free(control->lock, mutexGroup);
         OSFree(control, sizeof(KCControl), general_malloc_tag());
         return 0;
     }
-    
-    lck_mtx_lock(listMutex);
-    control->identifier = controlIdentifier++;
     
     if (controlsAlloc == controlsCount) {
         uint32_t newSize = (controlsAlloc + 2) * (uint32_t)sizeof(KCControl *);
@@ -267,6 +271,16 @@ uint32_t kc_control_get_connection(uint32_t identifier) {
     return conn;
 }
 
+uint32_t kc_control_get_unit(uint32_t identifier) {
+    KCControl * control;
+    if (!(control = kc_control_lock(identifier))) return 0;
+    uint32_t unit = control->unit;
+    kc_control_unlock(control);
+    return unit;
+}
+
+#pragma mark - Control Packets -
+
 __private_extern__
 KCControlPacket * kc_control_packet_allocate(uint16_t length) {
     uint32_t allocLen = length + (uint32_t)sizeof(KCControlPacket);
@@ -317,8 +331,12 @@ static void kc_process_packet(void * unitInfo) {
     errno_t error = kc_control_read_packet(identifier, &packet);
     if (!error) {
         debugf("kc_process_packet of type: %d", (int)packet->packetType);
-        if (packet->packetType == 1) {
+        if (packet->packetType == CONTROL_PACKET_CONNECT) {
             kc_process_packet_connect(identifier, packet);
+        } else if (packet->packetType == CONTROL_PACKET_SEND) {
+            kc_process_packet_send(identifier, packet);
+        } else if (packet->packetType == CONTROL_PACKET_CLOSE) {
+            kc_process_packet_close(identifier, packet);
         }
         kc_control_packet_free(packet);
     } else if (error == ENODATA) {
@@ -348,12 +366,27 @@ static void kc_process_packet_connect(uint32_t identifier, KCControlPacket * pac
     }
 }
 
+static void kc_process_packet_send(uint32_t identifier, KCControlPacket * packet) {
+    if (packet->length > 0) {
+        uint32_t conn = kc_control_get_connection(identifier);
+        if (conn) {
+            kc_connection_write(conn, packet->data, packet->length);
+        }
+    }
+}
+
+static void kc_process_packet_close(uint32_t identifier, KCControlPacket * packet) {
+    uint32_t conn = kc_control_get_connection(identifier);
+    if (conn) {
+        kc_connection_close(conn);
+    }
+}
+
 #pragma mark - Control Private -
 
 static errno_t control_handle_connect(kern_ctl_ref kctlref, struct sockaddr_ctl * sac, void ** unitinfo) {
     debugf("connected by PID %d", proc_selfpid());
-    uint32_t info = kc_control_create();
-    debugf("creating control");
+    uint32_t info = kc_control_create(sac->sc_unit);
     if (!info) return ENOMEM;
     *unitinfo = number_to_pointer(info); // this is ugly but screw it
     return 0;
@@ -370,9 +403,7 @@ static errno_t control_handle_getopt(kern_ctl_ref kctlref, u_int32_t unit, void 
 }
 
 static errno_t control_handle_send(kern_ctl_ref kctlref, u_int32_t unit, void * unitinfo, mbuf_t m, int flags) {
-    debugf("control_handle_send called");
     uint32_t identifier = pointer_to_number(unitinfo);
-    // suck the dick in the sucker dick sucker fuck
     errno_t error;
     if ((error = kc_control_append_data(identifier, m))) {
         return error;
@@ -387,17 +418,76 @@ static errno_t control_handle_setopt(kern_ctl_ref kctlref, u_int32_t unit, void 
 #pragma mark - Connection Callbacks -
 
 static void kc_connection_opened_callback(uint32_t connection) {
-    debugf("opened callback");
+    void * userInfo = kc_connection_get_user_data(connection);
+    uint32_t identifier = pointer_to_number(userInfo);
+    if (!identifier) return;
+    
+    char data[] = {CONTROL_PACKET_CONNECTED, 0, 0};
+    uint32_t unit = kc_control_get_unit(identifier);
+    if (ctl_enqueuedata(clientControl, unit, data, 3, 0)) {
+        debugf("error calling ctl_enqueuedata");
+    }
 }
 
 static void kc_connection_closed_callback(uint32_t connection) {
-    debugf("closed callback");
+    void * userInfo = kc_connection_get_user_data(connection);
+    uint32_t identifier = pointer_to_number(userInfo);
+    if (!identifier) return;
+    
+    char data[] = {CONTROL_PACKET_HUNGUP, 0, 0};
+    uint32_t unit = kc_control_get_unit(identifier);
+    if (ctl_enqueuedata(clientControl, unit, data, 3, 0)) {
+        debugf("error calling ctl_enqueuedata");
+    }
 }
 
 static void kc_connection_failed_callback(uint32_t connection, errno_t error) {
-    debugf("failed callback");
+    void * userInfo = kc_connection_get_user_data(connection);
+    uint32_t identifier = pointer_to_number(userInfo);
+    if (!identifier) return;
+    
+    char data[7] = {CONTROL_PACKET_HUNGUP, 0, 4};
+    uint32_t errorBig = htonl(error);
+    memcpy(&data[3], &errorBig, 4);
+    
+    uint32_t unit = kc_control_get_unit(identifier);
+    if (ctl_enqueuedata(clientControl, unit, data, 7, 0)) {
+        debugf("error calling ctl_enqueuedata");
+    }
 }
 
-static void kc_connection_newdata_callback(uint32_t connection, const char * buffer, size_t size) {
-    debugf("newdata callback");
+static void kc_connection_newdata_callback(uint32_t connection, char * buffer, size_t size) {
+    void * userInfo = kc_connection_get_user_data(connection);
+    uint32_t identifier = pointer_to_number(userInfo);
+    if (!identifier) {
+        OSFree(buffer, (uint32_t)size, general_malloc_tag());
+        return;
+    }
+    uint32_t unit = kc_control_get_unit(identifier);
+        
+    const char * subBuffer = buffer;
+    uint32_t subSize = (uint32_t)size;
+    while (subSize > 0) {
+        uint32_t useSize = subSize < 65536 ? subSize : 65535;
+        char * data = (char *)OSMalloc(useSize + 3, general_malloc_tag());
+        if (!data) {
+            debugf("%s: failed to allocate", __FUNCTION__);
+            OSFree(buffer, (uint32_t)size, general_malloc_tag());
+            return;
+        }
+        data[0] = CONTROL_PACKET_DATA;
+        uint16_t sizeBig = htons(useSize);
+        memcpy(&data[1], &sizeBig, 2);
+        memcpy(&data[3], subBuffer, useSize);
+        subBuffer = &subBuffer[useSize];
+        subSize -= useSize;
+        if (ctl_enqueuedata(clientControl, unit, data, useSize + 3, 0)) {
+            debugf("%s: failed to enqueue data", __FUNCTION__);
+            OSFree(data, useSize + 3, general_malloc_tag());
+            OSFree(buffer, (uint32_t)size, general_malloc_tag());
+            return;
+        }
+        OSFree(data, useSize + 3, general_malloc_tag());
+    }
+    OSFree(buffer, (uint32_t)size, general_malloc_tag());
 }

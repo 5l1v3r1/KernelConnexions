@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <sys/mbuf.h>
 #include <kern/locks.h>
+#include <sys/filio.h> // gives ioctl FIONBIO
 
 typedef struct {
     socket_t socket;
@@ -27,12 +28,13 @@ typedef struct {
     void * newdata_cb;
     boolean_t isConnected;
     uint32_t identifier;
+    mbuf_t writeBuffer;
 } KCConnection;
 
 typedef void (*kc_connection_opened)(uint32_t identifier);
 typedef void (*kc_connection_closed)(uint32_t identifier);
 typedef void (*kc_connection_failed)(uint32_t identifier, errno_t error);
-typedef void (*kc_connection_newdata)(uint32_t identifier, const char * buffer, size_t length);
+typedef void (*kc_connection_newdata)(uint32_t identifier, char * buffer, size_t length);
 
 typedef struct {
     kc_connection_opened opened;
@@ -48,6 +50,7 @@ uint32_t kc_connection_create(KCConnectionCallbacks callbacks, void * userData);
 void kc_connection_destroy(uint32_t connection);
 errno_t kc_connection_connect(uint32_t connection, const void * host, uint16_t port, boolean_t isIpv6);
 errno_t kc_connection_write(uint32_t connection, const void * buffer, size_t length);
-
+errno_t kc_connection_close(uint32_t connection);
+void * kc_connection_get_user_data(uint32_t identifier);
 
 #endif

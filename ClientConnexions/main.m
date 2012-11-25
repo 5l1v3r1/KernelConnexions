@@ -7,17 +7,13 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "ANKSocket.h"
 
-#include <sys/ioctl.h>
-#include <sys/kern_control.h>
-#include <sys/sys_domain.h>
-#include <sys/socket.h>
-
-int openConnection(NSString * bundleID);
+void logMessage(NSData * str);
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
-        int connection = openConnection(@"com.aqnichol.KernelConnexions");
+        /*int connection = openConnection(@"com.aqnichol.KernelConnexions");
         if (connection < 0) {
             fprintf(stderr, "failed to open socket.\n");
             return 1;
@@ -27,43 +23,31 @@ int main(int argc, const char * argv[]) {
         fgets(buff, 512, stdin);
         char data[] = {1, 0, 6, 0x55, 0x46, 198, 74, 59, 95};
         write(connection, data, 9);
-        printf("now sent data; press enter to close socket\n");
+        printf("now sent data; press enter to send super data\n");
+        char superdata[] = {0x5, 0, 3, 'h', 'i', '\n'};
         fgets(buff, 512, stdin);
-        sleep(1);
-        close(connection);
+        write(connection, superdata, 6);
+        printf("now sent superduper data. press enter to close\n");
+        fgets(buff, 512, stdin);
+        close(connection);*/
+        
+        ANKSocket * socket = [[ANKSocket alloc] initWithHost:@"198.74.59.95" port:0x5546];
+        if (!socket) {
+            NSLog(@"failed to connect.");
+            return 1;
+        }
+        logMessage([socket read:512]);
+        if (![socket write:[@"hello, there\n" dataUsingEncoding:NSASCIIStringEncoding]]) {
+            NSLog(@"failed to write data.");
+            return 1;
+        }
+        logMessage([socket read:512]);
+        [socket close];
     }
     return 0;
 }
 
-int openConnection(NSString * bundleID) {
-    const char * addrStr = [bundleID UTF8String];
-    
-    struct sockaddr_ctl addr;
-    struct ctl_info info;
-    bzero(&addr, sizeof(addr));
-    bzero(&info, sizeof(info));
-    
-    addr.sc_len = sizeof(struct sockaddr_ctl);
-    addr.sc_family = AF_SYSTEM;
-    addr.ss_sysaddr = AF_SYS_CONTROL;
-    
-    strncpy(info.ctl_name, addrStr, sizeof(info.ctl_name));
-    
-    int fd = socket(PF_SYSTEM, SOCK_STREAM, SYSPROTO_CONTROL);
-    if (fd < 0) return fd;
-    
-    if (ioctl(fd, CTLIOCGINFO, &info)) {
-        return ENOENT;
-    }
-    
-    addr.sc_id = info.ctl_id;
-    addr.sc_unit = 0;
-    
-    int result;
-    if ((result = connect(fd, (struct sockaddr *)&addr, sizeof(addr)))) {
-        return result;
-    }
-    
-    return fd;
+void logMessage(NSData * str) {
+    NSString * s = [[NSString alloc] initWithData:str encoding:NSASCIIStringEncoding];
+    NSLog(@"got message: %@", s);
 }
-

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		FA14ADC51662B57F00D91B5D /* ksockets.c in Sources */ = {isa = PBXBuildFile; fileRef = FA14ADC41662B57F00D91B5D /* ksockets.c */; };
+		FA14ADC81662BC8D00D91B5D /* ANKSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = FA14ADC71662BC8D00D91B5D /* ANKSocket.m */; };
 		FAD99D4E165D80940050FACE /* dispatch.c in Sources */ = {isa = PBXBuildFile; fileRef = FAD99D4D165D80940050FACE /* dispatch.c */; };
 		FAF7B307165C2D4A00C92BFF /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = FAF7B305165C2D4A00C92BFF /* InfoPlist.strings */; };
 		FAF7B309165C2D4A00C92BFF /* KernelConnexions.c in Sources */ = {isa = PBXBuildFile; fileRef = FAF7B308165C2D4A00C92BFF /* KernelConnexions.c */; };
@@ -33,6 +35,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		FA14ADC21662B3D700D91B5D /* ksockets.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ksockets.h; sourceTree = "<group>"; };
+		FA14ADC41662B57F00D91B5D /* ksockets.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ksockets.c; sourceTree = "<group>"; };
+		FA14ADC61662BC8D00D91B5D /* ANKSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ANKSocket.h; sourceTree = "<group>"; };
+		FA14ADC71662BC8D00D91B5D /* ANKSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ANKSocket.m; sourceTree = "<group>"; };
 		FAD99D4D165D80940050FACE /* dispatch.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = dispatch.c; sourceTree = "<group>"; };
 		FAD99D50165D809C0050FACE /* dispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dispatch.h; sourceTree = "<group>"; };
 		FAF7B2FD165C2D4A00C92BFF /* KernelConnexions.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KernelConnexions.kext; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -145,6 +151,10 @@
 		FAF7B322165C35BB00C92BFF /* ClientConnexions */ = {
 			isa = PBXGroup;
 			children = (
+				FA14ADC21662B3D700D91B5D /* ksockets.h */,
+				FA14ADC41662B57F00D91B5D /* ksockets.c */,
+				FA14ADC61662BC8D00D91B5D /* ANKSocket.h */,
+				FA14ADC71662BC8D00D91B5D /* ANKSocket.m */,
 				FAF7B323165C35BB00C92BFF /* main.m */,
 				FAF7B327165C35BB00C92BFF /* ClientConnexions.1 */,
 				FAF7B325165C35BB00C92BFF /* Supporting Files */,
@@ -276,6 +286,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				FAF7B324165C35BB00C92BFF /* main.m in Sources */,
+				FA14ADC51662B57F00D91B5D /* ksockets.c in Sources */,
+				FA14ADC81662BC8D00D91B5D /* ANKSocket.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
