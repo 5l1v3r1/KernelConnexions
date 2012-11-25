@@ -41,6 +41,7 @@ errno_t kc_control_destroy(uint32_t identifier);
 
 errno_t kc_control_append_data(uint32_t identifier, mbuf_t buffer);
 errno_t kc_control_read_packet(uint32_t identifier, KCControlPacket ** packet); // maybe ENODATA
+uint32_t kc_control_get_connection(uint32_t identifier);
 
 KCControlPacket * kc_control_packet_allocate(uint16_t length);
 void kc_control_packet_free(KCControlPacket * packet);

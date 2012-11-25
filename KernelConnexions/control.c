@@ -11,6 +11,7 @@
 static KCControl * kc_control_lock(uint32_t identifier);
 static void kc_control_unlock(KCControl * control);
 static void kc_process_packet(void * unitInfo);
+static void kc_process_packet_connect(uint32_t identifier, KCControlPacket * packet);
 
 static errno_t control_handle_connect(kern_ctl_ref kctlref, struct sockaddr_ctl * sac, void ** unitinfo);
 static errno_t control_handle_disconnect(kern_ctl_ref kctlref, u_int32_t unit, void * unitinfo);
@@ -94,7 +95,7 @@ kern_return_t control_unregister() {
     if (clientControl) {
         if (ctl_deregister(clientControl) != 0) {
             debugf("failed unloading because of connected controls");
-            return EBUSY;
+            return KERN_FAILURE;
         } else {
             clientControl = NULL;
         }
@@ -102,7 +103,7 @@ kern_return_t control_unregister() {
     
     lck_mtx_free(listMutex, mutexGroup);
     lck_grp_free(mutexGroup);
-    OSFree(controls, (uint32_t)sizeof(KCControl *) * controlsAlloc, general_malloc_tag());
+    OSFree(controls, controlsAlloc * (uint32_t)sizeof(KCControl *), general_malloc_tag());
     
     return KERN_SUCCESS;
 }
@@ -153,13 +154,12 @@ __private_extern__
 errno_t kc_control_destroy(uint32_t identifier) {
     lck_mtx_lock(listMutex);
     
-    KCControl * control;
+    KCControl * control = NULL;
     for (uint32_t i = 0; i < controlsCount; i++) {
         if (control) {
             controls[i - 1] = controls[i];
         } else if (controls[i]->identifier == identifier) {
             control = controls[i];
-            break;
         }
     }
     if (!control) {
@@ -174,6 +174,7 @@ errno_t kc_control_destroy(uint32_t identifier) {
     if (control->buffer) {
         OSFree(control->buffer, control->bufferSize, general_malloc_tag());
     }
+    lck_mtx_unlock(control->lock);
     lck_mtx_free(control->lock, mutexGroup);
     OSFree(control, sizeof(KCControl), general_malloc_tag());
     
@@ -256,6 +257,17 @@ errno_t kc_control_read_packet(uint32_t identifier, KCControlPacket ** packet) {
 }
 
 __private_extern__
+uint32_t kc_control_get_connection(uint32_t identifier) {
+    KCControl * control;
+    if (!(control = kc_control_lock(identifier))) return 0;
+    
+    uint32_t conn = control->connection;
+    
+    kc_control_unlock(control);
+    return conn;
+}
+
+__private_extern__
 KCControlPacket * kc_control_packet_allocate(uint16_t length) {
     uint32_t allocLen = length + (uint32_t)sizeof(KCControlPacket);
     KCControlPacket * packet = OSMalloc(allocLen, general_malloc_tag());
@@ -297,12 +309,17 @@ static void kc_control_unlock(KCControl * control) {
     lck_mtx_unlock(control->lock);
 }
 
+#pragma mark - Processing -
+
 static void kc_process_packet(void * unitInfo) {
     uint32_t identifier = pointer_to_number(unitInfo);
     KCControlPacket * packet = NULL;
     errno_t error = kc_control_read_packet(identifier, &packet);
     if (!error) {
         debugf("kc_process_packet of type: %d", (int)packet->packetType);
+        if (packet->packetType == 1) {
+            kc_process_packet_connect(identifier, packet);
+        }
         kc_control_packet_free(packet);
     } else if (error == ENODATA) {
         debugf("kc_process_packet ENODATA");
@@ -311,11 +328,32 @@ static void kc_process_packet(void * unitInfo) {
     }
 }
 
+static void kc_process_packet_connect(uint32_t identifier, KCControlPacket * packet) {
+    debugf("kc_process_packet_connect: entry");
+    boolean_t isIpv6 = FALSE;
+    if (packet->length == 6) {
+        debugf("kc_process_packet_connect: got ipv4 connect");
+    } else if (packet->length == 18) {
+        debugf("kc_process_packet_connect: got ipv6 connect");
+        isIpv6 = TRUE;
+    } else {
+        debugf("kc_process_packet_connect: unknown ip version packet size");
+        return;
+    }
+    uint16_t port = *(uint16_t *)packet->data;
+    void * addr = &packet->data[2];
+    uint32_t conn = kc_control_get_connection(identifier);
+    if (conn) {
+        kc_connection_connect(conn, addr, port, isIpv6);
+    }
+}
+
 #pragma mark - Control Private -
 
 static errno_t control_handle_connect(kern_ctl_ref kctlref, struct sockaddr_ctl * sac, void ** unitinfo) {
     debugf("connected by PID %d", proc_selfpid());
     uint32_t info = kc_control_create();
+    debugf("creating control");
     if (!info) return ENOMEM;
     *unitinfo = number_to_pointer(info); // this is ugly but screw it
     return 0;
@@ -332,6 +370,7 @@ static errno_t control_handle_getopt(kern_ctl_ref kctlref, u_int32_t unit, void 
 }
 
 static errno_t control_handle_send(kern_ctl_ref kctlref, u_int32_t unit, void * unitinfo, mbuf_t m, int flags) {
+    debugf("control_handle_send called");
     uint32_t identifier = pointer_to_number(unitinfo);
     // suck the dick in the sucker dick sucker fuck
     errno_t error;
@@ -348,17 +387,17 @@ static errno_t control_handle_setopt(kern_ctl_ref kctlref, u_int32_t unit, void 
 #pragma mark - Connection Callbacks -
 
 static void kc_connection_opened_callback(uint32_t connection) {
-    
+    debugf("opened callback");
 }
 
 static void kc_connection_closed_callback(uint32_t connection) {
-    
+    debugf("closed callback");
 }
 
 static void kc_connection_failed_callback(uint32_t connection, errno_t error) {
-    
+    debugf("failed callback");
 }
 
 static void kc_connection_newdata_callback(uint32_t connection, const char * buffer, size_t size) {
-    
+    debugf("newdata callback");
 }

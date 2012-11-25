@@ -48,7 +48,8 @@ kern_return_t KernelConnexions_start(kmod_info_t * ki, void * d) {
 }
 
 kern_return_t KernelConnexions_stop(kmod_info_t * ki, void * d) {
-    control_unregister();
+    if (control_unregister() != KERN_SUCCESS) return KERN_FAILURE;
+    dispatch_finalize();
     connection_finalize();
     general_finalize();
     return KERN_SUCCESS;

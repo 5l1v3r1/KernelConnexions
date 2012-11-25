@@ -20,7 +20,6 @@ static void dispatch_queue_main();
 
 __private_extern__
 kern_return_t dispatch_initialize() {
-    // TODO: free stuff on failure
     dispatches = (KCDispatchCB *)OSMalloc(sizeof(KCDispatchCB) * 2, general_malloc_tag());
     if (!dispatches) {
         return KERN_FAILURE;

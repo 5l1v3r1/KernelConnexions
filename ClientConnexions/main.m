@@ -22,8 +22,13 @@ int main(int argc, const char * argv[]) {
             fprintf(stderr, "failed to open socket.\n");
             return 1;
         }
-        char data[] = {1, 0, 1, 'a'};
-        write(connection, data, 4);
+        char buff[512];
+        printf("now connected to the kernel; press enter to send packet\n");
+        fgets(buff, 512, stdin);
+        char data[] = {1, 0, 6, 0x55, 0x46, 198, 74, 59, 95};
+        write(connection, data, 9);
+        printf("now sent data; press enter to close socket\n");
+        fgets(buff, 512, stdin);
         sleep(1);
         close(connection);
     }

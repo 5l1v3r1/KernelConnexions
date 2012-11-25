@@ -11,8 +11,8 @@
 static lck_grp_t * mutexGroup = NULL;
 static lck_mtx_t * listMutex = NULL;
 static KCConnection ** connections = NULL;
-static size_t connectionsCount = 0;
-static size_t connectionsAlloc = 0;
+static uint32_t connectionsCount = 0;
+static uint32_t connectionsAlloc = 0;
 static uint32_t identifierIncrement = 1;
 
 static KCConnection * kc_connection_lock(uint32_t identifier);
@@ -27,9 +27,16 @@ kern_return_t connection_initialize() {
     mutexGroup = lck_grp_alloc_init("connection", LCK_GRP_ATTR_NULL);
     if (!mutexGroup) return KERN_FAILURE;
     listMutex = lck_mtx_alloc_init(mutexGroup, LCK_ATTR_NULL);
-    if (!listMutex) return KERN_FAILURE;
+    if (!listMutex) {
+        lck_grp_free(mutexGroup);
+        return KERN_FAILURE;
+    }
     connections = (KCConnection **)OSMalloc(sizeof(KCConnection *) * 2, general_malloc_tag());
-    if (!connections) return KERN_FAILURE;
+    if (!connections) {
+        lck_mtx_free(listMutex, mutexGroup);
+        lck_grp_free(mutexGroup);
+        return KERN_FAILURE;
+    }
     connectionsAlloc = 2;
     return KERN_SUCCESS;
 }
@@ -38,7 +45,7 @@ __private_extern__
 void connection_finalize() {
     lck_mtx_free(listMutex, mutexGroup);
     lck_grp_free(mutexGroup);
-    OSFree(connections, (uint32_t)connectionsAlloc * (uint32_t)sizeof(KCConnection), general_malloc_tag());
+    OSFree(connections, connectionsAlloc * (uint32_t)sizeof(KCConnection *), general_malloc_tag());
 }
 
 __private_extern__
@@ -58,18 +65,16 @@ uint32_t kc_connection_create(KCConnectionCallbacks callbacks, void * userData) 
     lck_mtx_lock(listMutex);
     newConnection->identifier = identifierIncrement++; // this is within the lock for a reason
     if (connectionsCount == connectionsAlloc) {
-        uint32_t oldSize = (uint32_t)connectionsAlloc * (uint32_t)sizeof(KCConnection *);
+        uint32_t oldSize = connectionsAlloc * (uint32_t)sizeof(KCConnection *);
         connectionsAlloc += 2;
-        KCConnection ** newBuffer = (KCConnection **)OSMalloc((uint32_t)sizeof(KCConnection *) * (uint32_t)connectionsAlloc, tag);
+        KCConnection ** newBuffer = (KCConnection **)OSMalloc((uint32_t)sizeof(KCConnection *) * connectionsAlloc, tag);
         if (!newBuffer) {
             lck_mtx_free(newConnection->lock, mutexGroup);
             OSFree(newConnection, sizeof(KCConnection), tag);
             lck_mtx_unlock(listMutex);
             return 0;
         }
-        for (size_t i = 0; i < connectionsCount; i++) {
-            newBuffer[i] = connections[i];
-        }
+        memcpy(newBuffer, connections, oldSize);
         OSFree(connections, oldSize, tag);
         connections = newBuffer;
     }
@@ -90,10 +95,8 @@ void kc_connection_destroy(uint32_t identifier) {
     for (size_t i = 0; i < connectionsCount; i++) {
         if (connection) {
             connections[i - 1] = connections[i];
-        } else {
-            if (connections[i]->identifier == identifier) {
-                connection = connections[i];
-            }
+        } else if (connections[i]->identifier == identifier) {
+            connection = connections[i];
         }
     }
     if (!connection) {
@@ -101,6 +104,7 @@ void kc_connection_destroy(uint32_t identifier) {
         return;
     }
     connectionsCount -= 1;
+    lck_mtx_unlock(listMutex);
     
     OSMallocTag tag = general_malloc_tag();
     lck_mtx_lock(connection->lock);
@@ -109,9 +113,9 @@ void kc_connection_destroy(uint32_t identifier) {
         connection->socket = NULL;
     }
     lck_mtx_t * mtx = connection->lock;
+    lck_mtx_unlock(connection->lock);
     lck_mtx_free(mtx, mutexGroup);
     OSFree(connection, sizeof(KCConnection), tag);
-    // TODO: figure out if I need to unlock before free
 }
 
 __private_extern__
@@ -119,6 +123,10 @@ errno_t kc_connection_connect(uint32_t identifier, const void * host, uint16_t p
     errno_t error;
     KCConnection * connection;
     if (!(connection = kc_connection_lock(identifier))) return ENOENT;
+    if (connection->socket) {
+        kc_connection_unlock(connection);
+        return EALREADY;
+    }
     if (isIpv6) {
         struct sockaddr_in6 addr;
         bzero(&addr, sizeof(addr));
@@ -155,7 +163,7 @@ errno_t kc_connection_connect(uint32_t identifier, const void * host, uint16_t p
         addr.sin_len = sizeof(addr);
         addr.sin_port = port;
         error = sock_socket(AF_INET, SOCK_STREAM, 0,
-                            kc_upcall, connection, &connection->socket);
+                            kc_upcall, number_to_pointer(identifier), &connection->socket);
         if (error) {
             debugf("sock_socket(ipv4): error %d", error);
             kc_connection_unlock(connection);
@@ -175,6 +183,7 @@ errno_t kc_connection_connect(uint32_t identifier, const void * host, uint16_t p
         } else {
             kc_connection_unlock(connection);
         }
+        debugf("sock_connect(ipv4): final result: %d", error);
     }
     return error;
 }
@@ -244,10 +253,12 @@ static void kc_connection_unlock(KCConnection * conn) {
 }
 
 static void kc_upcall(socket_t so, void * cookie, int waitf) {
+    debugf("kc_upcall");
     dispatch_push(kc_upcall_dispatched, cookie);
 }
 
 static void kc_upcall_dispatched(void * cookie) {
+    debugf("kc_upcall_dispatch");
     uint32_t identifier = pointer_to_number(cookie);
     KCConnection * connection;
     if (!(connection = kc_connection_lock(identifier))) return;
